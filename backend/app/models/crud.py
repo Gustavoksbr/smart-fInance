@@ -2,6 +2,7 @@
 # app/models/crud.py — Database CRUD Operations
 # =============================================================================
 from typing import Optional, List
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.models import User, Dashboard, FinancialRecordDB
 from app.core.security import get_password_hash
@@ -62,9 +63,33 @@ def create_financial_record(
     valor: float,
     tipo: str,
 ) -> FinancialRecordDB:
+    # Normaliza a data para o formato YYYY-MM-DD aceitando vários formatos
+    def _normalize_date(d: "str | datetime") -> str:
+        if isinstance(d, datetime):
+            return d.strftime("%Y-%m-%d")
+        s = str(d or "").strip()
+        if not s:
+            raise ValueError("Data vazia")
+        # Remove parte de horário se existir
+        if " " in s:
+            s = s.split(" ")[0]
+        # Aceita / ou - como separador
+        s = s.replace("/", "-")
+        # Tenta parsear em alguns formatos comuns
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"):
+            try:
+                dt = datetime.strptime(s, fmt)
+                return dt.strftime("%Y-%m-%d")
+            except Exception:
+                continue
+        # Se não conseguir parsear, levanta erro para ser tratado pela rota
+        raise ValueError("Formato de data inválido. Use DD/MM/YYYY ou YYYY-MM-DD")
+
+    normalized_date = _normalize_date(data)
+
     record = FinancialRecordDB(
         dashboard_id=dashboard_id,
-        data=data,
+        data=normalized_date,
         nome=nome,
         descricao=descricao,
         categoria=categoria,
@@ -103,7 +128,27 @@ def update_financial_record(
     valor: float,
     tipo: str,
 ) -> FinancialRecordDB:
-    record.data = data
+    # Normaliza antes de atualizar
+    try:
+        if isinstance(data, datetime):
+            record.data = data.strftime("%Y-%m-%d")
+        else:
+            s = str(data or "").strip()
+            if " " in s:
+                s = s.split(" ")[0]
+            s = s.replace("/", "-")
+            for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"):
+                try:
+                    dt = datetime.strptime(s, fmt)
+                    record.data = dt.strftime("%Y-%m-%d")
+                    break
+                except Exception:
+                    continue
+            else:
+                raise ValueError("Formato de data inválido. Use DD/MM/YYYY ou YYYY-MM-DD")
+    except Exception:
+        # Re-raise para que a rota possa capturar e reportar a linha específica
+        raise
     record.nome = nome
     record.descricao = descricao
     record.categoria = categoria

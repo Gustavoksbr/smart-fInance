@@ -98,6 +98,50 @@ def _translate_validation_error(error: dict) -> str:
     return f"{field_label}: {msg}"
 
 
+def _parse_date_cell(value) -> str:
+    """Parseia uma célula de data da planilha assumindo formato brasileiro (dia/mês/ano).
+
+    Retorna string no formato YYYY-MM-DD ou levanta ValueError.
+    """
+    # Trata valores nulos
+    if pd.isna(value):
+        raise ValueError("Data vazia")
+
+    # Valores já como Timestamp/datetime
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return value.strftime("%Y-%m-%d")
+
+    s = str(value).strip()
+    # Remove parte horária se existir
+    if " " in s:
+        s = s.split(" ")[0]
+
+    # Se for número (Excel serial), tenta converter
+    try:
+        # detecta se é número representando data (ex: 44927)
+        if isinstance(value, (int, float)) and not s.startswith("0"):
+            dt = pd.to_datetime(value, unit="d", origin="1899-12-30")
+            return dt.strftime("%Y-%m-%d")
+    except Exception:
+        pass
+
+    # Normaliza separadores e tenta parse com dayfirst=True (português)
+    s_norm = s.replace("/", "-")
+    try:
+        dt = pd.to_datetime(s_norm, dayfirst=True, errors="raise")
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        # Tenta formatos explícitos comuns
+        for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d-%m-%y"):
+            try:
+                dt = datetime.strptime(s_norm, fmt)
+                return dt.strftime("%Y-%m-%d")
+            except Exception:
+                continue
+
+    raise ValueError("Data inválida ou formato não reconhecido")
+
+
 # ---------------------------------------------------------------------------
 # Download do Template Excel (DEVE VIR ANTES DAS ROTAS COM {dashboard_id})
 # ---------------------------------------------------------------------------
@@ -459,9 +503,10 @@ async def upload_excel(
     for idx, row in df.iterrows():
         row_num = int(idx) + 2  # +2 porque pandas é 0-indexed e há o cabeçalho
         try:
-            # Valida os dados antes de criar o registro
+            # Valida e normaliza os dados antes de criar o registro
+            parsed_date = _parse_date_cell(row["data"])
             record = FinancialRecord(
-                data=str(row["data"]).strip(),
+                data=parsed_date,
                 nome=str(row["nome"]).strip(),
                 descricao=str(row.get("descricao", "")).strip(),  # Opcional
                 categoria=str(row["categoria"]).strip(),
@@ -496,9 +541,12 @@ async def upload_excel(
             error_text = "; ".join(error_messages)
             errors.append({"row": row_num, "error": error_text})
         except ValueError as e:
-            # Erros de conversão de tipo (ex: valor não é número)
-            if "could not convert" in str(e).lower() or "invalid literal" in str(e).lower():
+            # Erros de conversão de tipo (ex: valor não é número) ou data inválida
+            msg = str(e).lower()
+            if "could not convert" in msg or "invalid literal" in msg:
                 errors.append({"row": row_num, "error": "Valor contém um número inválido"})
+            elif "data" in msg or "date" in msg or "formato" in msg:
+                errors.append({"row": row_num, "error": "Data inválida (use DD/MM/YYYY ou YYYY-MM-DD)"})
             else:
                 errors.append({"row": row_num, "error": str(e)})
         except Exception as exc:

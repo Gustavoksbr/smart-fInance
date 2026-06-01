@@ -132,3 +132,9 @@ O frontend usa `frontend/.env.example` como referência. Defina a URL do backend
 ```env
 VITE_API_URL=http://localhost:8000
 ```
+
+## Próximos passos
+
+- **Adicionar mais filtros e paginação:** permitir filtragem por período, categoria e tipo, e paginar a lista de registros para melhorar a performance e usabilidade.
+- **Criar gráfico de soma:** implementar um gráfico que mostre a soma total de `receita` e `despesa` separadamente.
+- **Sincronizar gráfico com filtros:** garantir que o gráfico reflita exatamente os filtros aplicados (período, categoria, tipo, search), atualizando dinamicamente os dados exibidos.
