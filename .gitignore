@@ -1,0 +1,51 @@
+# ─── Python / Backend ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+.dmypy.json
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# ─── Database ────────────────────────────────────────────────────────────────
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+smartfinance.db
+
+# ─── Node / Frontend ─────────────────────────────────────────────────────────
+node_modules/
+dist/
+.DS_Store
+*.local
+.vite/
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Uploads temporários ─────────────────────────────────────────────────────
+uploads/
+*.xlsx
+!frontend/src/data/template_smartfinance.xlsx
