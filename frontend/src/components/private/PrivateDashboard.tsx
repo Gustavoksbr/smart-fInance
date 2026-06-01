@@ -23,7 +23,7 @@ import ChatbotAssistant from "./ChatbotAssistant";
 import RecordTable from "./RecordTable";
 
 interface Dashboard { id: number; name: string; created_at: string; }
-interface Record { id?: number; data: string; nome: string; descricao: string; categoria: string; valor: number; tipo: string; }
+interface Record { id?: number; data: string; nome: string; descricao: string; categoria: string; valor: number; tipo: "receita" | "despesa"; }
 interface UploadResult { rows_imported: number; rows_rejected: number; message: string; errors: { row: number; error: string }[]; }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -49,8 +49,8 @@ export default function PrivateDashboard() {
     const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
     const [uploadError, setUploadError] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
-    const emptyRecord = { data: "", nome: "", descricao: "", categoria: "", valor: 0, tipo: "receita" as const };
-    const [newRecord, setNewRecord] = useState<typeof emptyRecord>(emptyRecord);
+    const emptyRecord: Record = { data: "", nome: "", descricao: "", categoria: "", valor: 0, tipo: "receita" };
+    const [newRecord, setNewRecord] = useState<Record>(emptyRecord);
     const [addingRecord, setAddingRecord] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [editingDashId, setEditingDashId] = useState<number | null>(null);
@@ -252,6 +252,61 @@ export default function PrivateDashboard() {
         }
     };
 
+    const handleDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = e.dataTransfer.files?.[0];
+        if (!file || !selected || !token || uploading) return;
+        if (!file.name.endsWith(".xlsx")) {
+            setUploadError("Apenas arquivos .xlsx são aceitos.");
+            return;
+        }
+        setUploading(true);
+        setUploadResult(null);
+        setUploadError("");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const res = await fetch(API(`/dashboards/${selected.id}/upload`), {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail ?? "Erro no upload.");
+            setUploadResult(data);
+            const rRes = await fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) });
+            const rData = await rRes.json();
+            setRecords(rData.records ?? []);
+        } catch (err: unknown) {
+            setUploadError((err as Error).message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleExport = async () => {
+        if (!selected || !token) return;
+        try {
+            const res = await fetch(API(`/dashboards/${selected.id}/export`), {
+                headers: authHeader(token),
+            });
+            if (!res.ok) throw new Error("Erro ao exportar registros.");
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${selected.name.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Erro ao exportar:", err);
+            alert("Erro ao exportar registros para Excel.");
+        }
+    };
+
     const handleLogout = () => { logout(); navigate("/macro"); };
 
     if (currentView === "macro") {
@@ -423,18 +478,38 @@ export default function PrivateDashboard() {
                                             <h2 className="font-display font-semibold text-white text-sm">{selected.name}</h2>
                                             <p className="text-xs text-slate-500">Importar ou inserir registros financeiros</p>
                                         </div>
-                                        <a
-                                            href={`${API_BASE_URL}/api/dashboards/template`}
-                                            download
-                                            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 px-3 py-2 rounded-xl transition-colors"
-                                        >
-                                            <Download size={12} />
-                                            Template Excel
-                                        </a>
+                                        <div className="flex gap-2">
+                                            <a
+                                                href={`${API_BASE_URL}/api/dashboards/template`}
+                                                download
+                                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 px-3 py-2 rounded-xl transition-colors"
+                                            >
+                                                <Download size={12} />
+                                                Template Excel
+                                            </a>
+                                            <button
+                                                onClick={handleExport}
+                                                disabled={records.length === 0}
+                                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 px-3 py-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={records.length === 0 ? "Nenhum registro para exportar" : "Exportar todos os registros"}
+                                            >
+                                                <Download size={12} />
+                                                Exportar Excel
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <label
                                         htmlFor="excel-upload"
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        onDragEnter={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        onDrop={handleDrop}
                                         className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-white/10 hover:border-emerald-500/30 rounded-xl p-6 cursor-pointer transition-colors group"
                                     >
                                         {uploading ? (
@@ -457,18 +532,25 @@ export default function PrivateDashboard() {
                                     </label>
 
                                     {uploadResult && (
-                                        <div className="mt-3 flex items-start gap-2 bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-3 animate-fade-in">
-                                            <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs text-emerald-300">{uploadResult.message}</p>
+                                        <div className={`mt-3 flex items-start gap-2 rounded-xl p-4 animate-fade-in ${uploadResult.rows_rejected === 0 ? "bg-emerald-500/8 border border-emerald-500/20" : "bg-amber-500/8 border border-amber-500/20"}`}>
+                                            <CheckCircle2 size={14} className={`flex-shrink-0 mt-0.5 ${uploadResult.rows_rejected === 0 ? "text-emerald-400" : "text-amber-400"}`} />
+                                            <div className="w-full">
+                                                <p className={`text-xs font-semibold ${uploadResult.rows_rejected === 0 ? "text-emerald-300" : "text-amber-300"}`}>{uploadResult.message}</p>
                                                 {uploadResult.errors.length > 0 && (
-                                                    <ul className="mt-1.5 flex flex-col gap-0.5">
-                                                        {uploadResult.errors.slice(0, 5).map((e) => (
-                                                            <li key={e.row} className="text-[10px] text-rose-400">
-                                                                Linha {e.row}: {e.error}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
+                                                    <div className="mt-2 max-h-48 overflow-y-auto">
+                                                        <ul className="flex flex-col gap-1">
+                                                            {uploadResult.errors.map((e) => (
+                                                                <li key={e.row} className="text-[10px] text-rose-400 pl-2 border-l border-rose-400/30">
+                                                                    <span className="font-semibold">Linha {e.row}:</span> {e.error}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                        {uploadResult.errors.length > 10 && (
+                                                            <p className="text-[9px] text-slate-500 mt-2 italic">
+                                                                ... e mais {uploadResult.errors.length - 10} erro(s)
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -548,7 +630,13 @@ export default function PrivateDashboard() {
                                                     type="number"
                                                     placeholder="0.00"
                                                     value={newRecord.valor || ""}
-                                                    onChange={(e) => setNewRecord((prev) => ({ ...prev, valor: Number(e.target.value) }))}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value || "0");
+                                                        if (Number.isNaN(val)) return setNewRecord((prev) => ({ ...prev, valor: 0 }));
+                                                        if (val < 0) return;
+                                                        if (val > 999999999.99) return; // limite máximo
+                                                        setNewRecord((prev) => ({ ...prev, valor: val }));
+                                                    }}
                                                     className="w-full bg-obsidian-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/40"
                                                 />
                                             </div>

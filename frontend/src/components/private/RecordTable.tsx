@@ -8,7 +8,7 @@ interface Record {
     descricao: string;
     categoria: string;
     valor: number;
-    tipo: string;
+    tipo: "receita" | "despesa";
 }
 
 interface RecordTableProps {
@@ -157,7 +157,7 @@ export default function RecordTable({ records, onUpdate, onDelete }: RecordTable
                                                 <td className="py-2.5 pr-4">
                                                     <select
                                                         value={editForm.tipo}
-                                                        onChange={(e) => setEditForm({ ...editForm, tipo: e.target.value })}
+                                                        onChange={(e) => setEditForm({ ...editForm, tipo: e.target.value as "receita" | "despesa" })}
                                                         className="bg-obsidian-800 border border-white/10 rounded px-2 py-1 text-xs text-slate-200 w-full"
                                                     >
                                                         <option value="receita">Receita</option>

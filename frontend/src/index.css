@@ -56,14 +56,31 @@
   }
 }
 
-/* Tornar o ícone do date picker visível (branco) em navegadores WebKit */
+/* Use native date picker indicator with white styling */
+input[type="date"] {
+  color-scheme: dark;
+  color: #e2e8f0;
+  background: transparent;
+  -webkit-text-fill-color: #e2e8f0;
+  padding-right: 1.8rem;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) brightness(1.4);
+  filter: brightness(0) invert(1);
   opacity: 1;
   cursor: pointer;
 }
 
-/* Fallback para outros navegadores (alguns ignoram o seletor acima) */
-input[type="date"] {
-  color-scheme: dark;
+/* Allow the full input area to trigger the picker */
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field {
+  pointer-events: none;
+}
+
+input[type="date"]::-webkit-clear-button,
+input[type="date"]::-webkit-inner-spin-button {
+  display: none;
 }

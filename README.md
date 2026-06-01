@@ -1,6 +1,10 @@
 # SmartFinance 💰
 
-Dashboard Financeiro e Macroeconômico Inteligente com gestão de finanças pessoais e visualização de dados econômicos.
+Dashboard Financeiro com gestão de finanças pessoais e visualização de dados econômicos, com assistente de IA via chatbot
+
+Acesse em https://smart-finance-nu-seven.vercel.app
+
+![alt text](image.png)
 
 ## 🚀 Tecnologias
 
@@ -12,6 +16,8 @@ Dashboard Financeiro e Macroeconômico Inteligente com gestão de finanças pess
 - **JWT** - Autenticação
 - **Pandas** - Processamento de planilhas Excel
 - **Bcrypt** - Criptografia de senhas
+- **httpx** - Cliente HTTP assíncrono usado para chamar a API da LLM
+
 
 ### Frontend
 - **React** - Biblioteca UI
@@ -27,35 +33,26 @@ Dashboard Financeiro e Macroeconômico Inteligente com gestão de finanças pess
 ### Autenticação
 - ✅ Cadastro de usuários
 - ✅ Login com JWT
-- ✅ Validação de senha (bcrypt)
-- ✅ Contadores de caracteres em todos os campos
+- ✅ Criptografia de senha (bcrypt)
 
-### Dashboards Pessoais
-- ✅ CRUD completo de dashboards
-- ✅ Múltiplos dashboards por usuário
-- ✅ Edição inline de nomes
-- ✅ Navegação por URL amigável
 
 ### Registros Financeiros
-- ✅ Inserção manual com validação
-- ✅ Upload de planilhas Excel
-- ✅ Exportação para Excel
+- ✅ CRUD completo
+- ✅ Importação/export de planilhas Excel
 - ✅ Edição e exclusão de registros
 - ✅ Filtros e busca
 - ✅ Validação de nomes únicos por dashboard
-- ✅ Descrição opcional
-- ✅ Limites de caracteres (nome: 50, descrição: 200, categoria: 50)
-- ✅ Validação de valores (> 0, máx: 999.999.999,99)
+- ✅ Limites de caracteres e de valores
 
 ### Visualização
 - ✅ Gráficos de receitas e despesas
-- ✅ Tabela com paginação
-- ✅ Ver mais/ver menos para descrições longas
 - ✅ Indicadores financeiros
-- ✅ Dashboard macroeconômico público
 - ✅ Bate-papo com IA contextualizado aos dados do dashboard
 
-## 🚀 Começando
+## 🚀 Como rodar na sua máquina:
+
+Comece fazendo o git clone (ou extraia com zip se não tiver git)
+
 ```bash
 git clone https://github.com/Gustavoksbr/smart-fInance
 cd smart-fInance
@@ -124,7 +121,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 # Chave de API para a LLM
 API_KEY=your-llm-api-key-here
 
-# URL da API de LLM (exemplo no)
+# URL da API de LLM (exemplo no Groq)
 LLM_API_URL=https://api.groq.com/v1/models/llama-3.1-8b-instant/predict
 ```
 
@@ -135,17 +132,3 @@ O frontend usa `frontend/.env.example` como referência. Defina a URL do backend
 ```env
 VITE_API_URL=http://localhost:8000
 ```
-
-## 🛠️ Configurando o Banco de Dados
-
-### SQLite (Recomendado para Desenvolvimento)
-
-Já está configurado por padrão. O banco é criado automaticamente na primeira execução:
-```env
-DATABASE_URL=sqlite:///./smartfinance.db
-```
-✅ Sem instalação externa
-✅ Perfeito para testes locais
-✅ Arquivo único (`smartfinance.db`)
-
----

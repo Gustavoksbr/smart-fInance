@@ -14,6 +14,7 @@ from datetime import datetime
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -45,6 +46,56 @@ def _get_dashboard_or_404(db: Session, dashboard_id: int) -> Dashboard:
 def _assert_owner(dashboard: Dashboard, user: User) -> None:
     if dashboard.owner_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado.")
+
+
+def _translate_validation_error(error: dict) -> str:
+    """Traduz erros de validação do Pydantic para mensagens legíveis em português."""
+    field = error.get("loc", [None])[0]
+    error_type = error.get("type", "")
+    msg = error.get("msg", "")
+    
+    # Mapa de campos para nomes legíveis
+    field_names = {
+        "data": "Data",
+        "nome": "Nome",
+        "descricao": "Descrição",
+        "categoria": "Categoria",
+        "valor": "Valor",
+        "tipo": "Tipo",
+    }
+    
+    field_label = field_names.get(field, str(field))
+    
+    # Mapa de tipos de erro para mensagens em português
+    error_messages = {
+        "string_too_long": f"{field_label} é muito longo (máximo 50 caracteres para '{field}')",
+        "string_too_short": f"{field_label} não pode estar vazio",
+        "value_error": f"{field_label} contém um valor inválido",
+        "type_error": f"{field_label} tem um tipo de dados inválido",
+        "greater_than": f"{field_label} deve ser maior que 0",
+        "less_than_equal": f"{field_label} é muito grande (máximo 999.999.999,99)",
+        "pattern_mismatch": f"{field_label} deve ser 'receita' ou 'despesa'",
+        "date_parsing": f"Data inválida (formato: YYYY-MM-DD)",
+        "float_parsing": f"{field_label} deve ser um número válido",
+    }
+    
+    # Traduz erros específicos
+    if "string_too_long" in error_type:
+        return f"{field_label} é muito longo (máximo 50 caracteres)"
+    elif "string_too_short" in error_type:
+        return f"{field_label} não pode estar vazio"
+    elif "greater_than" in error_type:
+        return f"{field_label} deve ser maior que 0"
+    elif "less_than_equal" in error_type:
+        return f"{field_label} é muito grande (máximo 999.999.999,99)"
+    elif "pattern_mismatch" in error_type or "pattern" in error_type.lower():
+        return f"{field_label} deve ser 'receita' ou 'despesa'"
+    elif "type_error" in error_type or "float_parsing" in msg.lower():
+        if field == "valor":
+            return f"{field_label} deve ser um número válido"
+        return f"{field_label} tem um formato inválido"
+    
+    return f"{field_label}: {msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -439,8 +490,20 @@ async def upload_excel(
                 record.tipo,
             )
             imported_count += 1
+        except ValidationError as ve:
+            # Traduz erros de validação do Pydantic
+            error_messages = [_translate_validation_error(error) for error in ve.errors()]
+            error_text = "; ".join(error_messages)
+            errors.append({"row": row_num, "error": error_text})
+        except ValueError as e:
+            # Erros de conversão de tipo (ex: valor não é número)
+            if "could not convert" in str(e).lower() or "invalid literal" in str(e).lower():
+                errors.append({"row": row_num, "error": "Valor contém um número inválido"})
+            else:
+                errors.append({"row": row_num, "error": str(e)})
         except Exception as exc:
-            errors.append({"row": row_num, "error": str(exc)})
+            errors.append({"row": row_num, "error": f"Erro inesperado: {str(exc)[:100]}"})
+
 
     return UploadResult(
         dashboard_id=dashboard_id,

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { MessageSquare, Send, Sparkles, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatbotAssistantProps {
   dashboardId: number;
@@ -153,7 +155,24 @@ export default function ChatbotAssistant({ dashboardId, dashboardName, token }: 
                   <div className="font-semibold text-xs uppercase tracking-[0.15em] text-slate-500">
                     {message.role === "user" ? "Você" : "Assistente"}
                   </div>
-                  <p className="mt-1 whitespace-pre-line break-words">{message.text}</p>
+                  {message.role === "assistant" ? (
+                    <div className="mt-1 break-words text-slate-200">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        className="prose prose-invert m-0 leading-relaxed"
+                        components={{
+                          p: ({ children }) => <p className="mt-1 break-words text-slate-200">{children}</p>,
+                          ul: ({ children }) => <ul className="mt-2 list-disc pl-5 text-slate-200">{children}</ul>,
+                          ol: ({ children }) => <ol className="mt-2 list-decimal pl-5 text-slate-200">{children}</ol>,
+                          li: ({ children }) => <li className="mb-1">{children}</li>,
+                        }}
+                      >
+                        {message.text}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="mt-1 whitespace-pre-line break-words">{message.text}</p>
+                  )}
                 </div>
               ))
             )}
