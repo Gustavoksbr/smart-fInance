@@ -45,6 +45,8 @@ export default function PrivateDashboard() {
     const [records, setRecords] = useState<Record[]>([]);
     const [newDashName, setNewDashName] = useState("");
     const [loadingDash, setLoadingDash] = useState(false);
+    const [loadingDashboards, setLoadingDashboards] = useState(true);
+    const [loadingRecords, setLoadingRecords] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
     const [uploadError, setUploadError] = useState("");
@@ -154,10 +156,12 @@ export default function PrivateDashboard() {
 
     useEffect(() => {
         if (!token) return;
+        setLoadingDashboards(true);
         fetch(API("/dashboards/"), { headers: authHeader(token) })
             .then((res) => res.json())
             .then((data) => setDashboards(data))
-            .catch(console.error);
+            .catch(console.error)
+            .finally(() => setLoadingDashboards(false));
     }, [token]);
 
     useEffect(() => {
@@ -181,10 +185,13 @@ export default function PrivateDashboard() {
 
     useEffect(() => {
         if (!selected || !token) return;
+        setLoadingRecords(true);
+        setRecords([]);
         fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) })
             .then((res) => res.json())
             .then((data) => setRecords(data.records ?? []))
-            .catch(console.error);
+            .catch(console.error)
+            .finally(() => setLoadingRecords(false));
     }, [selected, token]);
 
     const createDashboard = async () => {
@@ -359,70 +366,86 @@ export default function PrivateDashboard() {
                         <div className="glass-card p-4">
                             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-3">Seus Dashboards</p>
                             <div className="flex flex-col gap-1 mb-4">
-                                {dashboards.map((d) => {
-                                    const slug = d.name.toLowerCase().replace(/\s+/g, "-");
-                                    const isEditing = editingDashId === d.id;
-                                    return (
-                                        <div key={d.id} className="flex items-center gap-1">
-                                            {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    maxLength={50}
-                                                    value={editingDashName}
-                                                    onChange={(e) => setEditingDashName(e.target.value)}
-                                                    onBlur={() => updateDashboard(d.id, editingDashName)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") updateDashboard(d.id, editingDashName);
-                                                        if (e.key === "Escape") setEditingDashId(null);
-                                                    }}
-                                                    autoFocus
-                                                    className="flex-1 bg-obsidian-900 border border-emerald-500/40 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none"
+                                {loadingDashboards ? (
+                                    <div className="flex flex-col gap-2 px-1 py-1">
+                                        {[70, 50, 85].map((w, i) => (
+                                            <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+                                                <div className="skeleton w-3 h-3 rounded flex-shrink-0" />
+                                                <div
+                                                    className="skeleton h-2.5"
+                                                    style={{ width: `${w}%` }}
                                                 />
-                                            ) : (
-                                                <button
-                                                        onClick={() => {
-                                                            navigate(`/dashboards/${slug}`);
-                                                            setSelected(d);
-                                                            setUploadResult(null);
-                                                            setUploadError("");
-                                                        }}
-                                                        className={`flex-1 min-w-0 text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${selected?.id === d.id
-                                                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                                            : "text-slate-400 hover:bg-obsidian-700 hover:text-slate-200"
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <BarChart2 size={12} />
-                                                            <span className="truncate block">{d.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <>
+                                        {dashboards.map((d) => {
+                                            const slug = d.name.toLowerCase().replace(/\s+/g, "-");
+                                            const isEditing = editingDashId === d.id;
+                                            return (
+                                                <div key={d.id} className="flex items-center gap-1">
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="text"
+                                                            maxLength={50}
+                                                            value={editingDashName}
+                                                            onChange={(e) => setEditingDashName(e.target.value)}
+                                                            onBlur={() => updateDashboard(d.id, editingDashName)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") updateDashboard(d.id, editingDashName);
+                                                                if (e.key === "Escape") setEditingDashId(null);
+                                                            }}
+                                                            autoFocus
+                                                            className="flex-1 bg-obsidian-900 border border-emerald-500/40 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                navigate(`/dashboards/${slug}`);
+                                                                setSelected(d);
+                                                                setUploadResult(null);
+                                                                setUploadError("");
+                                                            }}
+                                                            className={`flex-1 min-w-0 text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${selected?.id === d.id
+                                                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                                                                : "text-slate-400 hover:bg-obsidian-700 hover:text-slate-200"
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <BarChart2 size={12} />
+                                                                <span className="truncate block">{d.name}</span>
+                                                            </div>
+                                                        </button>
+                                                    )}
+                                                    {!isEditing && (
+                                                        <div className="flex gap-1 flex-shrink-0">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingDashId(d.id);
+                                                                    setEditingDashName(d.name);
+                                                                }}
+                                                                className="p-1 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                                title="Renomear"
+                                                            >
+                                                                <Edit2 size={12} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteDashboard(d.id, d.name)}
+                                                                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                                                                title="Deletar"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
                                                         </div>
-                                                    </button>
-                                            )}
-                                            {!isEditing && (
-                                                <div className="flex gap-1 flex-shrink-0">
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingDashId(d.id);
-                                                            setEditingDashName(d.name);
-                                                        }}
-                                                        className="p-1 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
-                                                        title="Renomear"
-                                                    >
-                                                        <Edit2 size={12} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteDashboard(d.id, d.name)}
-                                                        className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                                                        title="Deletar"
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                                {dashboards.length === 0 && (
-                                    <p className="text-xs text-slate-600 italic px-3">Nenhum dashboard ainda.</p>
+                                            );
+                                        })}
+                                        {dashboards.length === 0 && (
+                                            <p className="text-xs text-slate-600 italic px-3">Nenhum dashboard ainda.</p>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
@@ -563,7 +586,7 @@ export default function PrivateDashboard() {
                                     )}
                                 </div>
 
-                                <DashboardCharts records={records} />
+                                <DashboardCharts records={records} loading={loadingRecords} />
 
                                 <div className="glass-card p-5">
                                     <h3 className="font-display font-semibold text-white text-sm mb-4">Inserção Manual</h3>

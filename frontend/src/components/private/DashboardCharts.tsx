@@ -24,6 +24,7 @@ interface Record {
 
 interface DashboardChartsProps {
     records: Record[];
+    loading?: boolean;
 }
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -49,7 +50,7 @@ const renderCustomLabel = ({ cx, cy, midAngle, outerRadius, percent, name, fill 
     );
 };
 
-export default function DashboardCharts({ records }: DashboardChartsProps) {
+export default function DashboardCharts({ records, loading }: DashboardChartsProps) {
     const stats = useMemo(() => {
         const receitas = records.filter((r) => r.tipo === "receita");
         const despesas = records.filter((r) => r.tipo === "despesa");
@@ -98,6 +99,54 @@ export default function DashboardCharts({ records }: DashboardChartsProps) {
             categoryChartData,
         };
     }, [records]);
+
+    if (loading) {
+        return (
+            <>
+                {/* Skeleton dos cards de estatísticas */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                    {["a", "b", "c"].map((k) => (
+                        <div key={k} className="glass-card p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="skeleton w-8 h-8 rounded-lg" />
+                                <div className="skeleton h-2 w-16" />
+                            </div>
+                            <div className="skeleton h-6 w-28" />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Skeleton dos gráficos */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {["x", "y"].map((k) => (
+                        <div key={k} className="glass-card p-5">
+                            <div className="skeleton h-3 w-24 mb-4" />
+                            <div className="skeleton h-[250px] w-full rounded-xl relative">
+                                {/* Linhas de grade decorativas */}
+                                {[20, 40, 60, 80].map((top) => (
+                                    <div
+                                        key={top}
+                                        className="absolute left-0 right-0 h-px bg-white/5"
+                                        style={{ top: `${top}%` }}
+                                    />
+                                ))}
+                                {/* Barras simulando o gráfico */}
+                                <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around px-4 pb-2 gap-1.5">
+                                    {[65, 45, 80, 55, 70, 40, 90].map((h, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex-1 rounded-t bg-white/[0.06]"
+                                            style={{ height: `${h}%` }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </>
+        );
+    }
 
     if (records.length === 0) {
         return null;
