@@ -1,4 +1,4 @@
-import { TrendingUp, Globe, Wallet, LogOut } from "lucide-react";
+import { TrendingUp, Globe, Wallet, LogOut, Github } from "lucide-react";
 
 interface DashboardNavProps {
     currentView: "macro" | "personal";
@@ -18,6 +18,16 @@ export default function DashboardNav({ currentView, onViewChange, userName, onLo
                             <TrendingUp size={14} className="text-emerald-400" />
                         </div>
                         <span className="font-display font-bold text-white text-sm tracking-tight">SmartFinance</span>
+                        <a
+                            href="https://github.com/Gustavoksbr/smart-fInance"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-200 hover:bg-obsidian-700 transition-colors"
+                            title="GitHub"
+                        >
+                            <Github size={14} />
+                            <span className="ml-1 text-[12px] font-medium">github</span>
+                        </a>
                     </div>
 
                     {/* Navegação entre views */}
@@ -64,6 +74,16 @@ export default function DashboardNav({ currentView, onViewChange, userName, onLo
                                 <TrendingUp size={14} className="text-emerald-400" />
                             </div>
                             <span className="font-display font-bold text-white text-sm tracking-tight">SmartFinance</span>
+                            <a
+                                href="https://github.com/Gustavoksbr/smart-fInance"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-2 flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-200 hover:bg-obsidian-700 transition-colors"
+                                title="GitHub"
+                            >
+                                <Github size={14} />
+                                <span className="ml-1 text-[12px] font-medium">github</span>
+                            </a>
                         </div>
 
                         <div className="flex items-center gap-2">

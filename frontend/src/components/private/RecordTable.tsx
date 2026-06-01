@@ -82,7 +82,10 @@ export default function RecordTable({ records, onUpdate, onDelete }: RecordTable
                         <thead>
                             <tr className="text-slate-500 border-b border-white/5">
                                 {["Data", "Nome", "Descrição", "Categoria", "Valor", "Tipo", "Ações"].map((h) => (
-                                    <th key={h} className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-[10px]">
+                                    <th
+                                        key={h}
+                                        className={`text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-[10px] ${h === "Ações" ? "sticky right-0 bg-obsidian-900 z-20" : ""}`}
+                                    >
                                         {h}
                                     </th>
                                 ))}
@@ -164,7 +167,7 @@ export default function RecordTable({ records, onUpdate, onDelete }: RecordTable
                                                         <option value="despesa">Despesa</option>
                                                     </select>
                                                 </td>
-                                                <td className="py-2.5">
+                                                <td className="py-2.5 pr-4 sticky right-0 bg-obsidian-900 z-10">
                                                     <div className="flex gap-1 flex-shrink-0">
                                                         <button
                                                             onClick={() => r.id && saveEdit(r.id)}
@@ -225,7 +228,7 @@ export default function RecordTable({ records, onUpdate, onDelete }: RecordTable
                                                         {r.tipo}
                                                     </span>
                                                 </td>
-                                                <td className="py-2.5 align-top">
+                                                <td className="py-2.5 align-top pr-4 sticky right-0 bg-obsidian-900 z-10">
                                                     <div className="flex gap-1">
                                                         <button
                                                             onClick={() => r.id && startEdit(r.id, r)}
