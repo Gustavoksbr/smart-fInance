@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageSquare, Send, Sparkles, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { fetchWithAuth } from "../../utils/fetchWithAuth";
 
 interface ChatbotAssistantProps {
   dashboardId: number;
@@ -57,10 +58,9 @@ export default function ChatbotAssistant({ dashboardId, dashboardName, token }: 
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/llm/chat`, {
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/llm/chat`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

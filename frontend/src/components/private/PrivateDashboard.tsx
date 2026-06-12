@@ -21,6 +21,7 @@ import PublicDashboardContent from "../public/PublicDashboardContent";
 import DashboardCharts from "./DashboardCharts";
 import ChatbotAssistant from "./ChatbotAssistant";
 import RecordTable from "./RecordTable";
+import { fetchWithAuth } from "../../utils/fetchWithAuth";
 
 interface Dashboard { id: number; name: string; created_at: string; }
 interface Record { id?: number; data: string; nome: string; descricao: string; categoria: string; valor: number; tipo: "receita" | "despesa"; }
@@ -28,10 +29,6 @@ interface UploadResult { rows_imported: number; rows_rejected: number; message: 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const API = (path: string) => `${API_BASE_URL}/api${path}`;
-
-function authHeader(token: string) {
-    return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export default function PrivateDashboard() {
     const { token, user, logout } = useAuthStore();
@@ -61,9 +58,9 @@ export default function PrivateDashboard() {
     const updateRecord = async (id: number, record: Record) => {
         if (!selected || !token) return;
         try {
-            const res = await fetch(API(`/dashboards/${selected.id}/records/${id}`), {
+            const res = await fetchWithAuth(API(`/dashboards/${selected.id}/records/${id}`), {
                 method: "PUT",
-                headers: authHeader(token),
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(record),
             });
             if (!res.ok) {
@@ -83,9 +80,8 @@ export default function PrivateDashboard() {
         if (!selected || !token) return;
         if (!confirm("Tem certeza que deseja deletar este registro?")) return;
         try {
-            const res = await fetch(API(`/dashboards/${selected.id}/records/${id}`), {
+            const res = await fetchWithAuth(API(`/dashboards/${selected.id}/records/${id}`), {
                 method: "DELETE",
-                headers: authHeader(token),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -101,9 +97,9 @@ export default function PrivateDashboard() {
     const updateDashboard = async (dashId: number, newName: string) => {
         if (!token || !newName.trim()) return;
         try {
-            const res = await fetch(API(`/dashboards/${dashId}`), {
+            const res = await fetchWithAuth(API(`/dashboards/${dashId}`), {
                 method: "PUT",
-                headers: authHeader(token),
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: newName.slice(0, 50) }),
             });
             if (!res.ok) {
@@ -125,9 +121,8 @@ export default function PrivateDashboard() {
         if (!token) return;
         if (!confirm(`Tem certeza que deseja deletar "${dashName}" e todos os seus registros?`)) return;
         try {
-            const res = await fetch(API(`/dashboards/${dashId}`), {
+            const res = await fetchWithAuth(API(`/dashboards/${dashId}`), {
                 method: "DELETE",
-                headers: authHeader(token),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -157,7 +152,7 @@ export default function PrivateDashboard() {
     useEffect(() => {
         if (!token) return;
         setLoadingDashboards(true);
-        fetch(API("/dashboards/"), { headers: authHeader(token) })
+        fetchWithAuth(API("/dashboards/"))
             .then((res) => res.json())
             .then((data) => setDashboards(data))
             .catch(console.error)
@@ -187,7 +182,7 @@ export default function PrivateDashboard() {
         if (!selected || !token) return;
         setLoadingRecords(true);
         setRecords([]);
-        fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) })
+        fetchWithAuth(API(`/dashboards/${selected.id}/records`))
             .then((res) => res.json())
             .then((data) => setRecords(data.records ?? []))
             .catch(console.error)
@@ -197,9 +192,9 @@ export default function PrivateDashboard() {
     const createDashboard = async () => {
         if (!newDashName.trim() || !token) return;
         setLoadingDash(true);
-        const res = await fetch(API("/dashboards/"), {
+        const res = await fetchWithAuth(API("/dashboards/"), {
             method: "POST",
-            headers: authHeader(token),
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: newDashName }),
         });
         const data = await res.json();
@@ -213,15 +208,15 @@ export default function PrivateDashboard() {
     const addRecord = async () => {
         if (!selected || !token) return;
         setAddingRecord(true);
-        const res = await fetch(API(`/dashboards/${selected.id}/records`), {
+        const res = await fetchWithAuth(API(`/dashboards/${selected.id}/records`), {
             method: "POST",
-            headers: authHeader(token),
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(newRecord),
         });
         const data = await res.json();
         if (res.ok) {
             // Fetch records again para obter os IDs corretos
-            const recordsRes = await fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) });
+            const recordsRes = await fetchWithAuth(API(`/dashboards/${selected.id}/records`));
             const recordsData = await recordsRes.json();
             setRecords(recordsData.records ?? []);
             setNewRecord(emptyRecord);
@@ -240,15 +235,14 @@ export default function PrivateDashboard() {
         const formData = new FormData();
         formData.append("file", file);
         try {
-            const res = await fetch(API(`/dashboards/${selected.id}/upload`), {
+            const res = await fetchWithAuth(API(`/dashboards/${selected.id}/upload`), {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail ?? "Erro no upload.");
             setUploadResult(data);
-            const rRes = await fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) });
+            const rRes = await fetchWithAuth(API(`/dashboards/${selected.id}/records`));
             const rData = await rRes.json();
             setRecords(rData.records ?? []);
         } catch (err: unknown) {
@@ -274,15 +268,14 @@ export default function PrivateDashboard() {
         const formData = new FormData();
         formData.append("file", file);
         try {
-            const res = await fetch(API(`/dashboards/${selected.id}/upload`), {
+            const res = await fetchWithAuth(API(`/dashboards/${selected.id}/upload`), {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail ?? "Erro no upload.");
             setUploadResult(data);
-            const rRes = await fetch(API(`/dashboards/${selected.id}/records`), { headers: authHeader(token) });
+            const rRes = await fetchWithAuth(API(`/dashboards/${selected.id}/records`));
             const rData = await rRes.json();
             setRecords(rData.records ?? []);
         } catch (err: unknown) {
@@ -295,9 +288,7 @@ export default function PrivateDashboard() {
     const handleExport = async () => {
         if (!selected || !token) return;
         try {
-            const res = await fetch(API(`/dashboards/${selected.id}/export`), {
-                headers: authHeader(token),
-            });
+            const res = await fetchWithAuth(API(`/dashboards/${selected.id}/export`));
             if (!res.ok) throw new Error("Erro ao exportar registros.");
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);

@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "TROQUE_ESTA_CHAVE_EM_PRODUCAO_COM_openssl_rand_hex_32"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 horas
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 144  # 144 horas
+    # ACCESS_TOKEN_EXPIRE_MINUTES: int = 1 # 1 minuto
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"
