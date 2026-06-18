@@ -676,7 +676,7 @@ export default function PrivateDashboard() {
                                 </div>
 
                                 <RecordTable records={records} onUpdate={updateRecord} onDelete={deleteRecord} />
-                                <ChatbotAssistant dashboardId={selected.id} dashboardName={selected.name} token={token ?? ""} />
+                                <ChatbotAssistant dashboardId={selected.id} dashboardName={selected.name} />
                             </>
                         )}
                     </div>

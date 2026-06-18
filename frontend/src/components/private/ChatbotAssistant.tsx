@@ -7,7 +7,6 @@ import { fetchWithAuth } from "../../utils/fetchWithAuth";
 interface ChatbotAssistantProps {
   dashboardId: number;
   dashboardName: string;
-  token: string;
 }
 
 type ChatMessage = {
@@ -34,7 +33,7 @@ const suggestions = [
   },
 ];
 
-export default function ChatbotAssistant({ dashboardId, dashboardName, token }: ChatbotAssistantProps) {
+export default function ChatbotAssistant({ dashboardId, dashboardName }: ChatbotAssistantProps) {
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
