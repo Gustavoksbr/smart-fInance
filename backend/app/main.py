@@ -3,6 +3,7 @@
 # =============================================================================
 import asyncio
 import httpx
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,49 +14,51 @@ from sqlalchemy.exc import OperationalError
 from app.api.routes import auth, dashboards
 from app.api.routes.llm import router as llm_router
 from app.core.config import settings
-from app.models.database import engine, Base, get_db
+from app.models.database import engine, Base, SessionLocal
+
+logger = logging.getLogger("keepalive")
 
 # ---------------------------------------------------------------------------
-# Keep-Alive Task — Mantém a API e Supabase acordados fazendo ping a cada 10 minutos
+# Keep-Alive Task — Mantém Render e Supabase ativos
 # ---------------------------------------------------------------------------
 async def keep_alive_task():
-    """Task que faz ping no próprio backend e consulta o banco a cada 10 minutos"""
+    """
+    Task que faz ping no endpoint /health a cada 10 minutos.
+    O /health faz consulta ao banco, mantendo tanto Render quanto Supabase ativos.
+    """
+    url = getattr(settings, "BACKEND_URL", None)
+    if not url:
+        logger.info("BACKEND_URL não definida — keep-alive desativado.")
+        return
+    
+    health_url = url.rstrip("/") + "/health"
+    
     # Aguarda 2 minutos após o startup antes do primeiro ping
     await asyncio.sleep(120)
     
-    while True:
-        try:
-            # Ping no backend (mantém Render acordado)
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(f"{settings.BACKEND_URL}/ping")
-                if response.status_code == 200:
-                    print(f"✓ Keep-alive ping successful: {response.json()}")
-                else:
-                    print(f"⚠ Keep-alive ping returned status {response.status_code}")
-            
-            # Consulta simples no banco (mantém Supabase acordado)
+    async with httpx.AsyncClient(timeout=15) as client:
+        while True:
+            await asyncio.sleep(600)  # 10 minutos
             try:
-                db = next(get_db())
-                try:
-                    # Executa uma query simples para "acordar" o Supabase
-                    result = db.execute(text("SELECT 1 as keep_alive"))
-                    row = result.fetchone()
-                    if row:
-                        print(f"✓ Database keep-alive successful: {row[0]}")
-                    else:
-                        print("⚠ Database keep-alive returned no result")
-                except Exception as db_err:
-                    print(f"✗ Database keep-alive query failed: {db_err}")
-                finally:
-                    db.close()
-            except Exception as db_conn_err:
-                print(f"✗ Database connection failed: {db_conn_err}")
+                # Chama o endpoint /health que vai consultar o banco (Supabase)
+                response = await client.get(health_url)
+                logger.info("keep-alive health-check -> %s %s", health_url, response.status_code)
                 
-        except Exception as e:
-            print(f"✗ Keep-alive ping failed: {e}")
-        
-        # Aguarda 10 minutos antes do próximo ping
-        await asyncio.sleep(600)
+                if response.status_code == 200:
+                    data = response.json()
+                    db_status = data.get("database", "unknown")
+                    logger.info("✓ Keep-alive successful | Database status: %s", db_status)
+                    
+                    if db_status == "error":
+                        db_error = data.get("database_error", "")
+                        if "ENOTFOUND" in db_error or "not found" in db_error:
+                            logger.warning("⚠ Database pausado pelo Supabase")
+                            logger.info("ℹ️  Acesse https://app.supabase.com para reativar")
+                else:
+                    logger.warning("⚠ Keep-alive returned status %s", response.status_code)
+                    
+            except Exception as e:
+                logger.warning("✗ Keep-alive falhou: %s", e)
 
 
 @asynccontextmanager
@@ -133,20 +136,57 @@ app.include_router(llm_router, prefix="/api/llm", tags=["llm"])
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "SmartFinance API"}
+    """
+    Health check que consulta o banco de dados.
+    Usado pelo keep-alive para manter Supabase e Render ativos.
+    """
+    db_status = "unknown"
+    db_error = None
+    
+    try:
+        # Cria uma sessão temporária para testar a conexão
+        db = SessionLocal()
+        try:
+            # Faz uma query simples para acordar o Supabase
+            result = db.execute(text("SELECT 1 as alive"))
+            row = result.fetchone()
+            if row and row[0] == 1:
+                db_status = "connected"
+            else:
+                db_status = "error"
+        finally:
+            db.close()
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+        logger.error("Health check database error: %s", e)
+    
+    response = {
+        "status": "ok",
+        "service": "SmartFinance API",
+        "database": db_status
+    }
+    
+    if db_error:
+        response["database_error"] = db_error
+    
+    return response
 
 
 @app.get("/ping")
 def ping():
-    """Endpoint público para keep-alive (não requer autenticação)"""
+    """Endpoint público simples sem consulta ao banco (não requer autenticação)"""
     return {"status": "pong", "message": "API está acordada"}
 
 
 @app.get("/db-health")
 def db_health_check():
-    """Endpoint para verificar a saúde do banco de dados"""
+    """
+    Endpoint legado - mantido para compatibilidade.
+    Use /health para verificação completa.
+    """
     try:
-        db = next(get_db())
+        db = SessionLocal()
         try:
             result = db.execute(text("SELECT 1 as health_check"))
             row = result.fetchone()
