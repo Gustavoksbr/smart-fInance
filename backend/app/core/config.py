@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     # Chave secreta para API de LLM (ngrok)
     API_KEY: str = ""
     # Groq API uses /v1/models/<model>/predict (see Groq docs)
-    LLM_API_URL: str = "https://api.groq.com/v1/models/llama-3.1-8b-instant/predict"
-    LLM_MODEL: str = "llama-3.1-8b-instant"
+    LLM_API_URL: str = "https://api.groq.com/v1/models/openai/gpt-oss-120b/predict"
+    LLM_MODEL: str = "openai/gpt-oss-120b"
 
     @property
     def cors_origins_list(self) -> list[str]:
